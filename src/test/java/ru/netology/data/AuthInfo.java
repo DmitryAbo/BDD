@@ -1,0 +1,10 @@
+package ru.netology.data;
+
+import lombok.Value;
+
+@Value
+public class AuthInfo {
+    private String login;
+    private String password;
+    private String verificationCode;
+}

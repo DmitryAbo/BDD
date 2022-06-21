@@ -1,17 +1,17 @@
 import org.junit.jupiter.api.*;
+import ru.netology.data.AuthInfo;
 import ru.netology.data.CardState;
 import ru.netology.data.DataHelper;
-import ru.netology.page.DashboardPage;
 import ru.netology.page.LoginPage;
 
 import static com.codeborne.selenide.Selenide.open;
-import static com.codeborne.selenide.Selenide.sleep;
 
 public class MoneyTransferTest {
 
 
-    public DataHelper.AuthInfo authInfo = DataHelper.getAuthInfo();
-    public DataHelper.VerificationCode verificationCode = DataHelper.getVerificationCodeFor(authInfo);
+    public AuthInfo authInfo = DataHelper.getAuthInfo();
+    public CardState firstCard = new CardState(0, "5559 0000 0000 0001", "92df3f1c-a033-48e6-8390-206f6b1f56c0");
+    public CardState secondCard = new CardState(0, "5559 0000 0000 0002", "0f3f5c2a-249e-4c3d-8287-09f7a039391d");
 
 
     @BeforeEach
@@ -22,110 +22,122 @@ public class MoneyTransferTest {
 
     @Test
     void transferFirstSecondAllCash() {
-        var cardFromId = "92df3f1c-a033-48e6-8390-206f6b1f56c0";
-        var cardToId = "0f3f5c2a-249e-4c3d-8287-09f7a039391d";
-        var dashboardPageStart = new LoginPage()
+        var dashboardPage = new LoginPage()
                 .validLogin(authInfo)
-                .validVerify(verificationCode);
-        var cardFromStateStart = dashboardPageStart.getCardState(cardFromId);           //Исходный баланс карты списания
-        var cardToStateStart = dashboardPageStart.getCardState(cardToId);               //Исходный баланс карты зачисления
-        var sum = cardFromStateStart.getBalance();                                          //Сумма списания/зачисления
-        var dashboardPageFinish = dashboardPageStart.refillCard(cardToId).refillMoney(String.valueOf(sum), cardFromStateStart.getPAN());
-        Assertions.assertEquals(dashboardPageFinish.getCardState(cardToId).getBalance(), cardToStateStart.getBalance() + sum);
-        Assertions.assertTrue(dashboardPageFinish.getCardState(cardToId).getBalance() > 0);
-        Assertions.assertEquals(dashboardPageFinish.getCardState(cardFromId).getBalance(), cardFromStateStart.getBalance() - sum);
-        Assertions.assertTrue(dashboardPageFinish.getCardState(cardFromId).getBalance() > 0);
-        dashboardPageFinish.refillCard(cardFromId).refillMoney(String.valueOf(sum), cardToStateStart.getPAN()); //возвращаем баланс карт в исходное состояние
+                .validVerify(authInfo.getVerificationCode());
+        DataHelper.getCardBalance(firstCard, dashboardPage.getCards());
+        DataHelper.getCardBalance(secondCard, dashboardPage.getCards());
+        var transactionValue = firstCard.getBalance();
+        var firstCardStartBalance = firstCard.getBalance();
+        var secondCardStartBalance = secondCard.getBalance();
+        dashboardPage.refillCard(secondCard.getCardId()).refillMoney(String.valueOf(transactionValue), firstCard.getPan());
+        DataHelper.getCardBalance(firstCard, dashboardPage.getCards());
+        DataHelper.getCardBalance(secondCard, dashboardPage.getCards());
+        var firstCardFinishBalance = firstCard.getBalance();
+        var secondCardFinishBalance = secondCard.getBalance();
+        Assertions.assertTrue(firstCardFinishBalance == firstCardStartBalance - transactionValue);
+        Assertions.assertTrue(secondCardFinishBalance == secondCardStartBalance + transactionValue);
+        dashboardPage.refillCard(firstCard.getCardId()).refillMoney(String.valueOf(transactionValue), secondCard.getPan()); //возвращаем баланс карт в исходное состояние
     }
 
     @Test
     void transferFirstSecondUpperLimitCash() {
-        var cardFromId = "92df3f1c-a033-48e6-8390-206f6b1f56c0";
-        var cardToId = "0f3f5c2a-249e-4c3d-8287-09f7a039391d";
-        var dashboardPageStart = new LoginPage()
+        var dashboardPage = new LoginPage()
                 .validLogin(authInfo)
-                .validVerify(verificationCode);
-        var cardFromStateStart = dashboardPageStart.getCardState(cardFromId);           //Исходный баланс карты списания
-        var cardToStateStart = dashboardPageStart.getCardState(cardToId);               //Исходный баланс карты зачисления
-        var sum = cardFromStateStart.getBalance() - 1;                                          //Сумма списания/зачисления
-        var dashboardPageFinish = dashboardPageStart.refillCard(cardToId).refillMoney(String.valueOf(sum), cardFromStateStart.getPAN());
-        Assertions.assertEquals(dashboardPageFinish.getCardState(cardToId).getBalance(), cardToStateStart.getBalance() + sum);
-        Assertions.assertTrue(dashboardPageFinish.getCardState(cardToId).getBalance() > 0);
-        Assertions.assertEquals(dashboardPageFinish.getCardState(cardFromId).getBalance(), cardFromStateStart.getBalance() - sum);
-        Assertions.assertTrue(dashboardPageFinish.getCardState(cardFromId).getBalance() > 0);
-        dashboardPageFinish.refillCard(cardFromId).refillMoney(String.valueOf(sum), cardToStateStart.getPAN()); //возвращаем баланс карт в исходное состояние
+                .validVerify(authInfo.getVerificationCode());
+        DataHelper.getCardBalance(firstCard, dashboardPage.getCards());
+        DataHelper.getCardBalance(secondCard, dashboardPage.getCards());
+        var transactionValue = firstCard.getBalance() - 1;
+        var firstCardStartBalance = firstCard.getBalance();
+        var secondCardStartBalance = secondCard.getBalance();
+        dashboardPage.refillCard(secondCard.getCardId()).refillMoney(String.valueOf(transactionValue), firstCard.getPan());
+        DataHelper.getCardBalance(firstCard, dashboardPage.getCards());
+        DataHelper.getCardBalance(secondCard, dashboardPage.getCards());
+        var firstCardFinishBalance = firstCard.getBalance();
+        var secondCardFinishBalance = secondCard.getBalance();
+        Assertions.assertTrue(firstCardFinishBalance == firstCardStartBalance - transactionValue);
+        Assertions.assertTrue(secondCardFinishBalance == secondCardStartBalance + transactionValue);
+        dashboardPage.refillCard(firstCard.getCardId()).refillMoney(String.valueOf(transactionValue), secondCard.getPan());
     }
 
     @Test
     void transferFirstSecondUnderLimitCash() {
-        var cardFromId = "92df3f1c-a033-48e6-8390-206f6b1f56c0";
-        var cardToId = "0f3f5c2a-249e-4c3d-8287-09f7a039391d";
-        var dashboardPageStart = new LoginPage()
+        var dashboardPage = new LoginPage()
                 .validLogin(authInfo)
-                .validVerify(verificationCode);
-        var cardFromStateStart = dashboardPageStart.getCardState(cardFromId);           //Исходный баланс карты списания
-        var cardToStateStart = dashboardPageStart.getCardState(cardToId);               //Исходный баланс карты зачисления
-        var sum = cardFromStateStart.getBalance() + 1;                                          //Сумма списания/зачисления
-        var dashboardPageFinish = dashboardPageStart.refillCard(cardToId).refillMoney(String.valueOf(sum), cardFromStateStart.getPAN());
-        Assertions.assertEquals(dashboardPageFinish.getCardState(cardToId).getBalance(), cardToStateStart.getBalance() + sum);
-        Assertions.assertTrue(dashboardPageFinish.getCardState(cardToId).getBalance() > 0);
-        Assertions.assertEquals(dashboardPageFinish.getCardState(cardFromId).getBalance(), cardFromStateStart.getBalance() - sum);
-        Assertions.assertTrue(dashboardPageFinish.getCardState(cardFromId).getBalance() > 0);
-        dashboardPageFinish.refillCard(cardFromId).refillMoney(String.valueOf(sum), cardToStateStart.getPAN()); //возвращаем баланс карт в исходное состояние
+                .validVerify(authInfo.getVerificationCode());
+        DataHelper.getCardBalance(firstCard, dashboardPage.getCards());
+        DataHelper.getCardBalance(secondCard, dashboardPage.getCards());
+        var transactionValue = firstCard.getBalance() + 1;
+        var firstCardStartBalance = firstCard.getBalance();
+        var secondCardStartBalance = secondCard.getBalance();
+        dashboardPage.refillCard(secondCard.getCardId()).refillMoney(String.valueOf(transactionValue), firstCard.getPan());
+        DataHelper.getCardBalance(firstCard, dashboardPage.getCards());
+        DataHelper.getCardBalance(secondCard, dashboardPage.getCards());
+        var firstCardFinishBalance = firstCard.getBalance();
+        var secondCardFinishBalance = secondCard.getBalance();
+        Assertions.assertTrue(firstCardFinishBalance == firstCardStartBalance - transactionValue);
+        Assertions.assertTrue(secondCardFinishBalance == secondCardStartBalance + transactionValue);
+        dashboardPage.refillCard(firstCard.getCardId()).refillMoney(String.valueOf(transactionValue), secondCard.getPan());
     }
 
     @Test
     void transferSecondFirstAllCash() {
-        var cardToId = "92df3f1c-a033-48e6-8390-206f6b1f56c0";
-        var cardFromId = "0f3f5c2a-249e-4c3d-8287-09f7a039391d";
-        var dashboardPageStart = new LoginPage()
+        var dashboardPage = new LoginPage()
                 .validLogin(authInfo)
-                .validVerify(verificationCode);
-        var cardFromStateStart = dashboardPageStart.getCardState(cardFromId);           //Исходный баланс карты списания
-        var cardToStateStart = dashboardPageStart.getCardState(cardToId);               //Исходный баланс карты зачисления
-        var sum = cardFromStateStart.getBalance();                                          //Сумма списания/зачисления
-        var dashboardPageFinish = dashboardPageStart.refillCard(cardToId).refillMoney(String.valueOf(sum), cardFromStateStart.getPAN());
-        Assertions.assertEquals(dashboardPageFinish.getCardState(cardToId).getBalance(), cardToStateStart.getBalance() + sum);
-        Assertions.assertTrue(dashboardPageFinish.getCardState(cardToId).getBalance() > 0);
-        Assertions.assertEquals(dashboardPageFinish.getCardState(cardFromId).getBalance(), cardFromStateStart.getBalance() - sum);
-        Assertions.assertTrue(dashboardPageFinish.getCardState(cardFromId).getBalance() > 0);
-        dashboardPageFinish.refillCard(cardFromId).refillMoney(String.valueOf(sum), cardToStateStart.getPAN()); //возвращаем баланс карт в исходное состояние
+                .validVerify(authInfo.getVerificationCode());
+        DataHelper.getCardBalance(firstCard, dashboardPage.getCards());
+        DataHelper.getCardBalance(secondCard, dashboardPage.getCards());
+        var transactionValue = secondCard.getBalance();
+        var firstCardStartBalance = firstCard.getBalance();
+        var secondCardStartBalance = secondCard.getBalance();
+        dashboardPage.refillCard(firstCard.getCardId()).refillMoney(String.valueOf(transactionValue), secondCard.getPan());
+        DataHelper.getCardBalance(firstCard, dashboardPage.getCards());
+        DataHelper.getCardBalance(secondCard, dashboardPage.getCards());
+        var firstCardFinishBalance = firstCard.getBalance();
+        var secondCardFinishBalance = secondCard.getBalance();
+        Assertions.assertTrue(firstCardFinishBalance == firstCardStartBalance + transactionValue);
+        Assertions.assertTrue(secondCardFinishBalance == secondCardStartBalance - transactionValue);
+        dashboardPage.refillCard(secondCard.getCardId()).refillMoney(String.valueOf(transactionValue), firstCard.getPan());
     }
 
     @Test
     void transferSecondFirstUpperLimitCash() {
-        var cardToId = "92df3f1c-a033-48e6-8390-206f6b1f56c0";
-        var cardFromId = "0f3f5c2a-249e-4c3d-8287-09f7a039391d";
-        var dashboardPageStart = new LoginPage()
+        var dashboardPage = new LoginPage()
                 .validLogin(authInfo)
-                .validVerify(verificationCode);
-        var cardFromStateStart = dashboardPageStart.getCardState(cardFromId);           //Исходный баланс карты списания
-        var cardToStateStart = dashboardPageStart.getCardState(cardToId);               //Исходный баланс карты зачисления
-        var sum = cardFromStateStart.getBalance() - 1;                                          //Сумма списания/зачисления
-        var dashboardPageFinish = dashboardPageStart.refillCard(cardToId).refillMoney(String.valueOf(sum), cardFromStateStart.getPAN());
-        Assertions.assertEquals(dashboardPageFinish.getCardState(cardToId).getBalance(), cardToStateStart.getBalance() + sum);
-        Assertions.assertTrue(dashboardPageFinish.getCardState(cardToId).getBalance() > 0);
-        Assertions.assertEquals(dashboardPageFinish.getCardState(cardFromId).getBalance(), cardFromStateStart.getBalance() - sum);
-        Assertions.assertTrue(dashboardPageFinish.getCardState(cardFromId).getBalance() > 0);
-        dashboardPageFinish.refillCard(cardFromId).refillMoney(String.valueOf(sum), cardToStateStart.getPAN()); //возвращаем баланс карт в исходное состояние
+                .validVerify(authInfo.getVerificationCode());
+        DataHelper.getCardBalance(firstCard, dashboardPage.getCards());
+        DataHelper.getCardBalance(secondCard, dashboardPage.getCards());
+        var transactionValue = secondCard.getBalance() - 1;
+        var firstCardStartBalance = firstCard.getBalance();
+        var secondCardStartBalance = secondCard.getBalance();
+        dashboardPage.refillCard(firstCard.getCardId()).refillMoney(String.valueOf(transactionValue), secondCard.getPan());
+        DataHelper.getCardBalance(firstCard, dashboardPage.getCards());
+        DataHelper.getCardBalance(secondCard, dashboardPage.getCards());
+        var firstCardFinishBalance = firstCard.getBalance();
+        var secondCardFinishBalance = secondCard.getBalance();
+        Assertions.assertTrue(firstCardFinishBalance == firstCardStartBalance + transactionValue);
+        Assertions.assertTrue(secondCardFinishBalance == secondCardStartBalance - transactionValue);
+        dashboardPage.refillCard(secondCard.getCardId()).refillMoney(String.valueOf(transactionValue), firstCard.getPan());
     }
 
     @Test
     void transferSecondFirstUnderLimitCash() {
-        var cardToId = "92df3f1c-a033-48e6-8390-206f6b1f56c0";
-        var cardFromId = "0f3f5c2a-249e-4c3d-8287-09f7a039391d";
-        var dashboardPageStart = new LoginPage()
+        var dashboardPage = new LoginPage()
                 .validLogin(authInfo)
-                .validVerify(verificationCode);
-        var cardFromStateStart = dashboardPageStart.getCardState(cardFromId);           //Исходный баланс карты списания
-        var cardToStateStart = dashboardPageStart.getCardState(cardToId);               //Исходный баланс карты зачисления
-        var sum = cardFromStateStart.getBalance() + 1;                                          //Сумма списания/зачисления
-        var dashboardPageFinish = dashboardPageStart.refillCard(cardToId).refillMoney(String.valueOf(sum), cardFromStateStart.getPAN());
-        Assertions.assertEquals(dashboardPageFinish.getCardState(cardToId).getBalance(), cardToStateStart.getBalance() + sum);
-        Assertions.assertTrue(dashboardPageFinish.getCardState(cardToId).getBalance() > 0);
-        Assertions.assertEquals(dashboardPageFinish.getCardState(cardFromId).getBalance(), cardFromStateStart.getBalance() - sum);
-        Assertions.assertTrue(dashboardPageFinish.getCardState(cardFromId).getBalance() > 0);
-        dashboardPageFinish.refillCard(cardFromId).refillMoney(String.valueOf(sum), cardToStateStart.getPAN()); //возвращаем баланс карт в исходное состояние
+                .validVerify(authInfo.getVerificationCode());
+        DataHelper.getCardBalance(firstCard, dashboardPage.getCards());
+        DataHelper.getCardBalance(secondCard, dashboardPage.getCards());
+        var transactionValue = secondCard.getBalance() + 1;
+        var firstCardStartBalance = firstCard.getBalance();
+        var secondCardStartBalance = secondCard.getBalance();
+        dashboardPage.refillCard(firstCard.getCardId()).refillMoney(String.valueOf(transactionValue), secondCard.getPan());
+        DataHelper.getCardBalance(firstCard, dashboardPage.getCards());
+        DataHelper.getCardBalance(secondCard, dashboardPage.getCards());
+        var firstCardFinishBalance = firstCard.getBalance();
+        var secondCardFinishBalance = secondCard.getBalance();
+        Assertions.assertTrue(firstCardFinishBalance == firstCardStartBalance + transactionValue);
+        Assertions.assertTrue(secondCardFinishBalance == secondCardStartBalance - transactionValue);
+        dashboardPage.refillCard(secondCard.getCardId()).refillMoney(String.valueOf(transactionValue), firstCard.getPan());
     }
 
 }

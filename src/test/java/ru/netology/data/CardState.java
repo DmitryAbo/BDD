@@ -1,9 +1,15 @@
 package ru.netology.data;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.Value;
 
-@Value
+@AllArgsConstructor
+@Getter
+@Setter
 public class CardState {
     private int balance;
-    private String PAN;
+    private String pan;
+    private String cardId;
 }
